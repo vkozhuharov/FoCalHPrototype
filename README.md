@@ -1,2 +1,3 @@
-# bug-free-couscous
+#  FoCalHPrototype
+
 FoCal-H testbeam software and configurations
