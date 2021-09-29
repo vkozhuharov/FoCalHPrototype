@@ -34,6 +34,7 @@ struct ProtoFoCalHEvent{
   float evn;
   int t0event;
   int t1event;
+  int bOK[2];
 };
 
 int InitAnalysis();

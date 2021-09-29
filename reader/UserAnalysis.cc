@@ -39,16 +39,17 @@ int AnalyzeEvent(ProtoFoCalHEvent *evt ){
   static int N;
   N++;
   
-  printSingleEvent(evt);
+  //  printSingleEvent(evt);
   
-
+  if(evt->bOK[1] == 1) return 0;
+		       
   if(evt->t0event == 0 && evt->t1event == 0 ) {
     //Good event !
 
     for(int x = 0;x<NROWS;x++){
       for(int y=0;y<NCOLUMNS;y++){
 	//	histo->GetHisto("ProtoFoCalMap")->SetBinContent(NROWS-x,NCOLUMNS-y,evt->ch[x][y].charge);
-	
+	((TH2F* ) histo->GetHisto("ProtoFoCalMapComulative")) -> Fill(NROWS-x-1,NCOLUMNS-y-1,evt->ch[x][y].charge);
 	
       }
     }
