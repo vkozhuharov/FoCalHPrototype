@@ -174,6 +174,8 @@ int clearEvent(ProtoFoCalHEvent *evt ){
   evt->t1event = 0;
   evt->charge = 0.;
   evt->time = 0.;
+  evt->bOK[0] = evt->bOK[1] = 0;
+
   
   
   return 0;
@@ -182,7 +184,31 @@ int clearEvent(ProtoFoCalHEvent *evt ){
 
 
 
+int fillEventSingleBoard(struct ProtoFoCalHBoard *bevt, ProtoFoCalHEvent *event,ProtoFoCalHConfig *cfg){
+  int ic = bevt->mac5; //In principle this should be decoupled from the MAC!
+  event->t0[ic] = bevt->ts0;
+  event->t0ref[ic] = bevt->ts0_ref;
+  event->t1[ic] = bevt->ts1;
+  event->t1ref[ic] = bevt->ts1_ref;
+  for (int iCh = 0;iCh<nChannels;iCh++){
+    if(cfg->GetX(ic,iCh) >= 0 && cfg->GetY(ic,iCh) >= 0 ){
+      //Fill the event structure;
+      //Get X, Get Y
+      int x  = cfg->GetX(ic,iCh);
+      int y = cfg->GetY(ic,iCh);
+      
+      event->ch[x][y].charge = bevt->chg[iCh];
+      event->ch[x][y].bid = bevt->mac5;
+      event->ch[x][y].ts0 = bevt->ts0;
+      event->ch[x][y].ts1 = bevt->ts1;
+      event->ch[x][y].ts0_ref = bevt->ts0_ref;
+      event->ch[x][y].ts1_ref = bevt->ts1_ref;
+    }      
+  }
+  event->bOK[ic] = 1;
+  return 0;
 
+}
 
 int main(int argc, char **argv){
 
@@ -316,9 +342,13 @@ int main(int argc, char **argv){
   int iEv = 0; //Global event number sent for analysis
 
   
-  //position at the first TS0 signal
+  //position at the first TS0 signal, first board;
   do{
     t1->GetEntry(iEv0);
+    clearEvent(&event);
+    fillEventSingleBoard((evt[0]),&event,&cfg);
+    AnalyzeEvent(&event);
+    iEv++;
     iEv0++;
   } while (evt[0]->ts0 != 0 || iEv0 == nentries);
 
@@ -326,13 +356,16 @@ int main(int argc, char **argv){
     std::cout << "B0: First event number with reference signal: " << iEv0-1 << "   TimeStamp TS0: " << evt[0]->ts0 << std::endl;
   } else {
     std::cout << "No reference signal found in the data" << std::endl;
-    
   }
   
-  //position at the first TS0 signal
+  //position at the first TS0 signal, second board;
 
   do{
     t2->GetEntry(iEv1);
+    clearEvent(&event);
+    fillEventSingleBoard((evt[1]),&event,&cfg);
+    AnalyzeEvent(&event);
+    iEv++;
     iEv1++;
   } while (evt[1]->ts0 != 0 || iEv1 == nentries2);
   
@@ -350,7 +383,8 @@ int main(int argc, char **argv){
   }
  
   //Form the event - first event, special event, ........
-  iEv++;
+  clearEvent(&event);
+
   event.evn = iEv;
   event.t0event = 1;
   event.t0event = 0;
@@ -359,6 +393,7 @@ int main(int argc, char **argv){
     event.t0ref[ic] = evt[ic]->ts0_ref;
     event.t1[ic] = evt[ic]->ts1;
     event.t1ref[ic] = evt[ic]->ts1_ref;
+    event.bOK[0] = event.bOK[1] = 1;
     for (int iCh = 0;iCh<nChannels;iCh++){
       if(cfg.GetX(ic,iCh) >= 0 && cfg.GetY(ic,iCh) >= 0 ){
 	//Fill the event structure;
@@ -379,6 +414,7 @@ int main(int argc, char **argv){
   //Analyze the event
   std::cout << "Analize the first special event " << std::endl;
   AnalyzeEvent(&event);
+  iEv++;
 
 
   //Start the event loop:
@@ -394,13 +430,21 @@ int main(int argc, char **argv){
       if( evt[0]->ts0 > evt[1]->ts0 + TIMEWINDOW ||
 	  evt[0]->ts0 == 0 //reached end of frame
 	  ) {
+	clearEvent(&event);
+	fillEventSingleBoard((evt[1]),&event,&cfg);
+	AnalyzeEvent(&event);
+	iEv++;
+
 	t2->GetEntry(iEv1);
 	iEv1++;
-      } else 
+      } else {
       // if( evt[1]->ts0 >  evt[0]->ts0 + TIMEWINDOW ||
       // 	  evt[1]->ts0 == 0 //reached end of frame
       // 	  )
-	{
+	clearEvent(&event);
+	fillEventSingleBoard((evt[0]),&event,&cfg);
+	AnalyzeEvent(&event);
+	
 	t1->GetEntry(iEv0);
 	iEv0++;
       }      
@@ -417,7 +461,7 @@ int main(int argc, char **argv){
       if(evt[0]->ts0 == 0 &&   evt[1]->ts0 == 0) {
 	event.t0event = 1;
 	nFrames++;
-	std::cout << "Found new T0 signal. Number of T1 triggers in previous frame:" << nTS1events << std::endl;
+	//	std::cout << "Found new T0 signal. Number of T1 triggers in previous frame:" << nTS1events << std::endl;
 	if(nTS1events > 10) {
 	  std::cout << "==== WARNING: Missed T0 clock identified ====" << std::endl;
 	}
@@ -438,6 +482,7 @@ int main(int argc, char **argv){
 	event.t0ref[ic] = evt[ic]->ts0_ref;
 	event.t1[ic] = evt[ic]->ts1;
 	event.t1ref[ic] = evt[ic]->ts1_ref;
+	event.bOK[0] = event.bOK[1] = 1;
 	for (int iCh = 0;iCh<nChannels;iCh++){
 	  if(cfg.GetX(ic,iCh) >= 0 && cfg.GetY(ic,iCh) >= 0 ){
 	    //Fill the event structure;
