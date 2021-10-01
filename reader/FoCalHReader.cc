@@ -18,9 +18,10 @@
 #include "HistoSvc.hh"
 #include "ProtoFocalEvent.hh"
 
-#define TIMEWINDOW 500 //500 ns time window for event matching
+#define TIMEWINDOW 300 //500 ns time window for event matching
 #define TS1LIMIT 10
 
+#include "pedestals.h"
 
 //TO BE DONE
 
@@ -125,33 +126,6 @@ TH2F *ProtoFoCalMapComulative;
 
 
 
-void initHistos() {
-  char name[256];
-  char title[256];
-
-  for(int ib = 0;ib < nboards; ib++) {
-    for (int i = 0;i<nChannels;i++){
-      sprintf(name,"B_%d_Ch_%02d",ib,i);
-      sprintf(title,"Charge in channel %02d , board %d",i,ib);
-      Charge[ib][i] = new TH1F(name, title, 1000, 0.0, 4096);
-    }
-  }
-  ProtoFoCalMap = new TH2F("ProtoFoCalMap","Charge map of a single event",NROWS,0,NROWS,NCOLUMNS,0,NCOLUMNS);
-  ProtoFoCalMapComulative = new TH2F("ProtoFoCalMapComulative","Charge map of a single event",NROWS,0,NROWS,NCOLUMNS,0,NCOLUMNS);
- 
-  
-}
-
-void resetHistos(){
-  
-  for(int ir=0;ir<NROWS;ir++){
-    for(int ic=0;ic<NCOLUMNS;ic++) {
-      ProtoFoCalMap->SetBinContent(ir+1,ic+1,0);
-    }
-  }
-}
-
-
 int readSingleEvent(ProtoFoCalHEvent *evt ){
   memset(&evt,0,sizeof(ProtoFoCalHEvent));
   
@@ -175,7 +149,7 @@ int clearEvent(ProtoFoCalHEvent *evt ){
   evt->charge = 0.;
   evt->time = 0.;
   evt->bOK[0] = evt->bOK[1] = 0;
-
+  evt->evn=0;
   
   
   return 0;
@@ -186,18 +160,25 @@ int clearEvent(ProtoFoCalHEvent *evt ){
 
 int fillEventSingleBoard(struct ProtoFoCalHBoard *bevt, ProtoFoCalHEvent *event,ProtoFoCalHConfig *cfg){
   int ic = bevt->mac5; //In principle this should be decoupled from the MAC!
+  char name[64];
+  HistoSvc *histo = HistoSvc::GetInstance();
+
   event->t0[ic] = bevt->ts0;
   event->t0ref[ic] = bevt->ts0_ref;
   event->t1[ic] = bevt->ts1;
   event->t1ref[ic] = bevt->ts1_ref;
   for (int iCh = 0;iCh<nChannels;iCh++){
-    if(cfg->GetX(ic,iCh) >= 0 && cfg->GetY(ic,iCh) >= 0 ){
+    sprintf(name,"B_%d_Ch_%02d",ic,iCh);      
+    if(bevt->ts0 == 0)
+      histo->GetHisto(name)->Fill(bevt->chg[iCh]);
+    
+    if(cfg->GetX(ic,iCh) >= 0 && cfg->GetY(ic,iCh) >= 0 && cfg->GetX(ic,iCh) < NROWS && cfg->GetY(ic,iCh) < NCOLUMNS){
       //Fill the event structure;
       //Get X, Get Y
       int x  = cfg->GetX(ic,iCh);
       int y = cfg->GetY(ic,iCh);
-      
-      event->ch[x][y].charge = bevt->chg[iCh];
+
+      event->ch[x][y].charge = bevt->chg[iCh] - ped[ic][iCh];
       event->ch[x][y].bid = bevt->mac5;
       event->ch[x][y].ts0 = bevt->ts0;
       event->ch[x][y].ts1 = bevt->ts1;
@@ -228,10 +209,12 @@ int main(int argc, char **argv){
 
   int nl=0;
   int nr=0;
+  int nn=0;
+  int nEventsToRead;
   
   extern char *optarg;
 
-  while ((opt = getopt(argc, argv, "l:r:")) != -1) {
+  while ((opt = getopt(argc, argv, "l:r:n:")) != -1) {
     switch (opt) {
       case 'l':
 	strncpy(b0FileName,optarg,250);
@@ -264,14 +247,9 @@ int main(int argc, char **argv){
   TTree *t2 = (TTree*)f2->Get("mppc2");
 
   
-
-
-
-
-
-  
   HistoSvc* histo = HistoSvc::GetInstance();
   histo->HistoInit("Output.root");
+  initPedestals();
   
   InitAnalysis();
   
@@ -347,8 +325,9 @@ int main(int argc, char **argv){
     t1->GetEntry(iEv0);
     clearEvent(&event);
     fillEventSingleBoard((evt[0]),&event,&cfg);
-    AnalyzeEvent(&event);
     iEv++;
+    event.evn = iEv;
+    AnalyzeEvent(&event);
     iEv0++;
   } while (evt[0]->ts0 != 0 || iEv0 == nentries);
 
@@ -364,8 +343,9 @@ int main(int argc, char **argv){
     t2->GetEntry(iEv1);
     clearEvent(&event);
     fillEventSingleBoard((evt[1]),&event,&cfg);
-    AnalyzeEvent(&event);
     iEv++;
+    event.evn = iEv;      
+    AnalyzeEvent(&event);
     iEv1++;
   } while (evt[1]->ts0 != 0 || iEv1 == nentries2);
   
@@ -413,8 +393,9 @@ int main(int argc, char **argv){
   
   //Analyze the event
   std::cout << "Analize the first special event " << std::endl;
-  AnalyzeEvent(&event);
   iEv++;
+  event.evn = iEv;      
+  AnalyzeEvent(&event);
 
 
   //Start the event loop:
@@ -432,9 +413,9 @@ int main(int argc, char **argv){
 	  ) {
 	clearEvent(&event);
 	fillEventSingleBoard((evt[1]),&event,&cfg);
-	AnalyzeEvent(&event);
 	iEv++;
-
+	event.evn = iEv;      
+	AnalyzeEvent(&event);
 	t2->GetEntry(iEv1);
 	iEv1++;
       } else {
@@ -443,15 +424,17 @@ int main(int argc, char **argv){
       // 	  )
 	clearEvent(&event);
 	fillEventSingleBoard((evt[0]),&event,&cfg);
+	iEv++;
+	event.evn = iEv;      
 	AnalyzeEvent(&event);
-	
+
 	t1->GetEntry(iEv0);
 	iEv0++;
       }      
     }
 
     
-    //    std::cout << "Matching found at " << iEv0 << "   " << iEv1 << std::endl; 
+    // std::cout << "Matching found at " << iEv0 << "   " << iEv1 << std::endl; 
 
     if (iEv1 < nentries2 && iEv0<nentries) {
       //Found matching timestamps.
@@ -475,30 +458,12 @@ int main(int argc, char **argv){
       } else {
 	event.t1event = 0;
       }
+      
+      event.bOK[0] = event.bOK[1] = 1;
+      
+      fillEventSingleBoard((evt[0]),&event,&cfg);
+      fillEventSingleBoard((evt[1]),&event,&cfg);
 
-
-      for(int ic = 0;ic < cfg.ncards; ic++) {
-	event.t0[ic] = evt[ic]->ts0;
-	event.t0ref[ic] = evt[ic]->ts0_ref;
-	event.t1[ic] = evt[ic]->ts1;
-	event.t1ref[ic] = evt[ic]->ts1_ref;
-	event.bOK[0] = event.bOK[1] = 1;
-	for (int iCh = 0;iCh<nChannels;iCh++){
-	  if(cfg.GetX(ic,iCh) >= 0 && cfg.GetY(ic,iCh) >= 0 ){
-	    //Fill the event structure;
-	    //Get X, Get Y
-	    int x  = cfg.GetX(ic,iCh);
-	    int y = cfg.GetY(ic,iCh);
-	    
-	    event.ch[x][y].charge = evt[ic]->chg[iCh];
-	    event.ch[x][y].bid = evt[ic]->mac5;
-	    event.ch[x][y].ts0 = evt[ic]->ts0;
-	    event.ch[x][y].ts1 = evt[ic]->ts1;
-	    event.ch[x][y].ts0_ref = evt[ic]->ts0_ref;
-	    event.ch[x][y].ts1_ref = evt[ic]->ts1_ref;
-	  }      
-	}
-      }
       //Analyze the event
       iEv++;
       event.evn = iEv;      
@@ -585,7 +550,7 @@ int main(int argc, char **argv){
   
   EndAnalysis();
     
-  std::cout << "Read " << nentries << " events " << std::endl;
+  std::cout << "Read " << iEv << " events " << std::endl;
   
   //End of event loop
   // c->cd();
