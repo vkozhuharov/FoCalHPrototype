@@ -120,7 +120,7 @@ int AnalyzeEvent(ProtoFoCalHEvent *evt ){
     for(int x = 0;x<NROWS;x++){
       for(int y=0;y<NCOLUMNS;y++){
        	histo->GetHisto("ProtoFoCalMap")->SetBinContent(NROWS-x-1,NCOLUMNS-y-1,evt->ch[x][y].charge);
-	if(evt->ch[x][y].charge < 10.) continue;
+	if(evt->ch[x][y].charge < 20.) continue;
 	
 	//	if(evt->ch[x][y].charge > 20)
 	nfired ++;
@@ -155,9 +155,10 @@ int AnalyzeEvent(ProtoFoCalHEvent *evt ){
 
     for(int x = 0;x<NROWS;x++){
       for(int y=0;y<NCOLUMNS;y++){
-	if(evt->ch[x][y].charge < 10.) continue;
-	sigmax+= (sumx - nfired*evt->ch[x][y].charge/totCharge)*(sumx - nfired*evt->ch[x][y].charge/totCharge);
-	sigmay+= (sumy - nfired*evt->ch[x][y].charge/totCharge)*(sumy - nfired*evt->ch[x][y].charge/totCharge);
+	if(evt->ch[x][y].charge < 20.) continue;
+
+	sigmax+= (sumx - nfired*evt->ch[x][y].charge*1.1875*(x+0.5)/totCharge)*(sumx - nfired*evt->ch[x][y].charge*1.1875*(x+0.5)/totCharge);
+	sigmay+= (sumy - nfired*evt->ch[x][y].charge*1.583*(y+0.5)/totCharge)*(sumy - nfired*evt->ch[x][y].charge*1.583*(y+0.5)/totCharge);
       }
     }
     sigmax /= nfired;
@@ -170,20 +171,20 @@ int AnalyzeEvent(ProtoFoCalHEvent *evt ){
     double r = sqrt(sigmax*sigmax + sigmay*sigmay);
     
 
-
-
-    
-    histo->GetHisto("AvalancheX")->Fill(sumx);
-    histo->GetHisto("AvalancheY")->Fill(sumy);
-    histo->GetHisto("AvalancheSigmaX")->Fill(sigmax);
-    histo->GetHisto("AvalancheSigmaY")->Fill(sigmay);
-    histo->GetHisto("AvalancheSigmaXvsSigmaY")->Fill(sigmax,sigmay);
-    histo->GetHisto("AvalancheRadius")->Fill(r);
-
-    
     histo->GetHisto("TotalCharge")->Fill(totCharge);
+
     histo->GetHisto("TotChargeVsRadius")->Fill(totCharge,r);
 
+    if(totCharge > 1000) {
+      histo->GetHisto("AvalancheX")->Fill(sumx);
+      histo->GetHisto("AvalancheY")->Fill(sumy);
+      histo->GetHisto("AvalancheSigmaX")->Fill(sigmax);
+      histo->GetHisto("AvalancheSigmaY")->Fill(sigmay);
+      histo->GetHisto("AvalancheSigmaXvsSigmaY")->Fill(sigmax,sigmay);
+      histo->GetHisto("AvalancheRadius")->Fill(r);
+      
+      
+    }
 
     
     if(evt->bOK[1] == 1 && evt->bOK[0] == 1) 
