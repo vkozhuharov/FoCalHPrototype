@@ -1,4 +1,4 @@
 
-gcc `root-config --cflags --libs` -L `root-config --incdir` -lstdc++ UserAnalysis.cc HistoSvc.cc FoCalHReader.cc
+gcc `root-config --cflags --libs` -L `root-config --incdir` -lstdc++ UserAnalysis.cc HistoSvc.cc ProtoFoCalHConfig.cc ProtoFoCalHConfig.cc FoCalHReader.cc
 echo ==== To RUN ===
 echo ./a.out -l data/NewSyncTest-Night//mppc0.root -r data/NewSyncTest-Night//mppc1.root
