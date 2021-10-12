@@ -1,6 +1,8 @@
 #include <signal.h>
 #include <iostream>
 #include "HistoSvc.hh"
+#include <sys/stat.h>
+#include <unistd.h>
 
 
 int FoCalHReader(char* ,char *);
