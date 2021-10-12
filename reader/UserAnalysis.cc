@@ -77,11 +77,11 @@ int InitAnalysis() {
 
 void DumpTimeStamps(ProtoFoCalHEvent *evt){
   if(evt->bOK[0] == 1) {
-    fprintf(b0out,"B0 evt: %8d, TS0: %10d, TS1: %10d\n", evt->evn,evt->t0[0],evt->t1[0]);
-    fprintf(stdout,"B0 evt: %8d, TS0: %10d, TS1: %10d\n", evt->evn,evt->t0[0],evt->t1[0]);
+    fprintf(b0out,"B0 evt: %8d, TS0: %10ld, TS1: %10ld\n", evt->evn,evt->t0[0],evt->t1[0]);
+    fprintf(stdout,"B0 evt: %8d, TS0: %10ld, TS1: %10ld\n", evt->evn,evt->t0[0],evt->t1[0]);
   }
   if(evt->bOK[1] == 1) {
-    fprintf(b1out,"B1 evt: %8d, TS0: %10d, TS1: %10d\n", evt->evn,evt->t0[1], evt->t1[1]);
+    fprintf(b1out,"B1 evt: %8d, TS0: %10ld, TS1: %10ld\n", evt->evn,evt->t0[1], evt->t1[1]);
   }
 
 }

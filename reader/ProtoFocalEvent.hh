@@ -31,7 +31,7 @@ struct ProtoFoCalHEvent{
   float energy;
   float time;
   float charge;
-  float evn;
+  int evn;
   int t0event;
   int t1event;
   int bOK[2];
