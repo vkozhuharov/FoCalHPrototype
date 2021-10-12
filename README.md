@@ -17,5 +17,6 @@ where the arguments are the files from the board with MAC5 == 00 and the board w
 and then 
 
 root [0] .L FoCalHRootReader.cc
+
 root [1] FoCalHRootReader("data/2021_10_05_01_16_28/mppc0.root","data/2021_10_05_01_16_28/mppc1.root");
 
